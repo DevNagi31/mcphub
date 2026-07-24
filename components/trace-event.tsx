@@ -1,15 +1,5 @@
 'use client';
 import { motion } from 'framer-motion';
-import {
-  Search,
-  Calculator,
-  PenLine,
-  ShieldCheck,
-  Wrench,
-  ArrowRight,
-  CheckCircle2,
-  AlertCircle,
-} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -24,118 +14,123 @@ export type TraceEvent =
 
 export type AgentRole = 'researcher' | 'analyst' | 'writer' | 'fact_checker';
 
-const ROLE_META: Record<AgentRole, { label: string; color: string; Icon: typeof Search }> = {
-  researcher: { label: 'Researcher', color: '#0071e3', Icon: Search },
-  analyst: { label: 'Analyst', color: '#7e3bff', Icon: Calculator },
-  writer: { label: 'Writer', color: '#0a7c2f', Icon: PenLine },
-  fact_checker: { label: 'Fact Checker', color: '#b07b00', Icon: ShieldCheck },
+export const ROLE_META: Record<AgentRole, { label: string; dot: string }> = {
+  researcher: { label: 'Researcher', dot: '#8ea3ab' },
+  analyst: { label: 'Analyst', dot: '#7fb3a3' },
+  writer: { label: 'Writer', dot: '#c3ab74' },
+  fact_checker: { label: 'Fact-Checker', dot: '#6f9187' },
 };
 
-const easing = [0.16, 1, 0.3, 1] as const;
+const EASE = [0.16, 1, 0.3, 1] as const;
 
-export function TraceEventCard({ event, index }: { event: TraceEvent; index: number }) {
+/** A single line in the dark trace log. */
+export function TraceLine({
+  event,
+  index,
+  stamp,
+}: {
+  event: TraceEvent;
+  index: number;
+  stamp: string;
+}) {
+  const line = describe(event);
+  if (!line) return null;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: easing, delay: Math.min(0.05, index * 0.005) }}
+    <motion.li
+      initial={{ opacity: 0, x: -6 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.25, ease: EASE, delay: Math.min(0.06, index * 0.004) }}
+      className="relative flex gap-3 py-[7px] pl-6 pr-4 text-[12.5px] leading-[1.5]"
     >
-      {renderEvent(event)}
-    </motion.div>
+      <span
+        className="absolute left-2 top-[13px] h-1.5 w-1.5 rounded-full"
+        style={{ background: line.dot }}
+        aria-hidden="true"
+      />
+      <span className="shrink-0 font-mono text-ink-400">[{stamp}]</span>
+      <span className="min-w-0 text-ink-200">
+        <span className="font-medium text-white">{line.label}</span>{' '}
+        <span className="text-ink-300">{line.text}</span>
+      </span>
+    </motion.li>
   );
 }
 
-function renderEvent(event: TraceEvent): JSX.Element {
-  if (event.type === 'done') {
-    return (
-      <div className="glass mt-2 p-6">
-        <div className="mb-3 flex items-center gap-2 text-[11px] uppercase tracking-[0.08em] text-ink-400">
-          <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-          Final answer
-        </div>
-        <div className="prose prose-sm max-w-none prose-headings:tracking-tightest prose-code:font-mono prose-code:bg-ink-100 prose-code:px-1 prose-code:rounded prose-a:text-accent">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{event.final}</ReactMarkdown>
-        </div>
-      </div>
-    );
-  }
+function describe(
+  event: TraceEvent,
+): { label: string; text: string; dot: string } | null {
+  if (event.type === 'done') return null;
+
   if (event.type === 'error') {
-    return (
-      <div className="card mt-2 border-l-4 border-danger p-4">
-        <div className="flex items-center gap-2 text-[13px] font-medium text-danger">
-          <AlertCircle className="h-4 w-4" /> {ROLE_META[event.role].label} failed
-        </div>
-        <pre className="mt-1 whitespace-pre-wrap text-[12px] text-ink-600">{event.message}</pre>
-      </div>
-    );
+    return {
+      label: `${ROLE_META[event.role].label} failed`,
+      text: event.message,
+      dot: '#d4756c',
+    };
   }
 
   const meta = ROLE_META[event.role];
 
-  if (event.type === 'start') {
-    return (
-      <div className="mt-4 flex items-center gap-3 px-1">
-        <span
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-white"
-          style={{ background: meta.color }}
-        >
-          <meta.Icon className="h-3.5 w-3.5" />
-        </span>
-        <div className="text-[14px] font-semibold tracking-tight text-ink-800">{meta.label}</div>
-        <ArrowRight className="h-3.5 w-3.5 text-ink-400" />
-        <span className="text-[12px] text-ink-400">starting</span>
-      </div>
-    );
+  switch (event.type) {
+    case 'start':
+      return { label: `${meta.label} agent`, text: 'picked up the handoff.', dot: meta.dot };
+    case 'thinking':
+      return { label: meta.label, text: truncate(event.text, 180), dot: meta.dot };
+    case 'tool_call':
+      return {
+        label: meta.label,
+        text: `called ${event.tool} ${compactJson(event.input)}`,
+        dot: meta.dot,
+      };
+    case 'tool_result':
+      return {
+        label: meta.label,
+        text: `got back ${truncate(event.output.replace(/\s+/g, ' '), 140)}`,
+        dot: meta.dot,
+      };
+    case 'finish':
+      return { label: meta.label, text: 'handed off its output.', dot: meta.dot };
+    default:
+      return null;
   }
+}
 
-  if (event.type === 'finish') {
-    return (
-      <div className="card border-l-4 p-4" style={{ borderLeftColor: meta.color }}>
-        <div className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.08em] text-ink-400">
-          <meta.Icon className="h-3 w-3" style={{ color: meta.color }} />
-          {meta.label} output
-        </div>
-        <div className="prose prose-sm max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{event.output}</ReactMarkdown>
-        </div>
+/** Long-form output from a stage, rendered outside the log. */
+export function StageOutput({
+  role,
+  output,
+  highlight = false,
+}: {
+  role: AgentRole;
+  output: string;
+  highlight?: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: EASE }}
+      className={highlight ? 'panel border-sage/60 p-6 md:p-8' : 'card p-6'}
+    >
+      <div className="mb-3 text-[11px] uppercase tracking-[0.12em] text-ink-400">
+        {highlight ? 'Final answer' : `${ROLE_META[role].label} output`}
       </div>
-    );
-  }
-
-  if (event.type === 'thinking') {
-    return (
-      <div className="ml-10 mr-1 my-1 text-[12px] italic text-ink-600">
-        {event.text.length > 280 ? event.text.slice(0, 280) + '…' : event.text}
+      <div className="prose prose-sm max-w-none text-ink-800 prose-headings:tracking-tightest prose-a:text-sage-deep prose-code:rounded prose-code:bg-ink-100 prose-code:px-1 prose-code:font-mono">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
       </div>
-    );
-  }
+    </motion.div>
+  );
+}
 
-  if (event.type === 'tool_call') {
-    return (
-      <div className="ml-10 mt-1 inline-flex items-center gap-2 rounded-full bg-ink-100 px-3 py-1 text-[12px]">
-        <Wrench className="h-3 w-3 text-ink-600" />
-        <span className="font-mono text-ink-800">{event.tool}</span>
-        <span className="text-ink-400">{compactJson(event.input)}</span>
-      </div>
-    );
-  }
-
-  if (event.type === 'tool_result') {
-    const preview = event.output.length > 220 ? event.output.slice(0, 220) + '…' : event.output;
-    return (
-      <div className="ml-10 mb-2 mt-1 rounded-lg bg-ink-50 p-3 font-mono text-[11px] text-ink-600 whitespace-pre-wrap">
-        ← {preview}
-      </div>
-    );
-  }
-
-  return <></>;
+function truncate(s: string, n: number): string {
+  return s.length > n ? s.slice(0, n) + '...' : s;
 }
 
 function compactJson(v: unknown): string {
   try {
     const s = JSON.stringify(v);
-    return s.length > 120 ? s.slice(0, 120) + '…' : s;
+    return s.length > 90 ? s.slice(0, 90) + '...' : s;
   } catch {
     return String(v);
   }

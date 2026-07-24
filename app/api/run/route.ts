@@ -51,7 +51,14 @@ export async function POST(req: NextRequest) {
           if (ev.type === 'done' || ev.type === 'error') break;
         }
       } catch (err) {
-        enqueue(sse('error', { message: (err as Error).message }));
+        // Same shape as a pipeline-emitted error so the client can render it.
+        enqueue(
+          sse('error', {
+            type: 'error',
+            role: 'researcher',
+            message: (err as Error).message,
+          }),
+        );
       } finally {
         try {
           controller.close();

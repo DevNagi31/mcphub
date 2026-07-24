@@ -6,35 +6,54 @@
   html { -webkit-font-smoothing: antialiased; }
   body { font-feature-settings: 'ss01', 'cv11'; }
   h1, h2, h3 { letter-spacing: -0.022em; }
+  :focus-visible { outline: none; }
 }
 
 @layer components {
-  .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/60 shadow-glass rounded-2xl;
-  }
-  .nav-blur {
-    @apply bg-white/70 backdrop-blur-2xl border-b border-ink-100;
+  .panel {
+    @apply rounded-2xl border border-ink-100 bg-white shadow-panel;
   }
   .card {
-    @apply bg-white border border-ink-100 shadow-soft rounded-2xl;
+    @apply rounded-2xl border border-ink-100 bg-white shadow-soft;
+  }
+  .nav-blur {
+    @apply border-b border-ink-100/80 bg-ink-50/80 backdrop-blur-xl;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-full bg-accent px-5 py-2 text-sm
-           font-medium text-white transition hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-lg bg-accent px-6 py-3 text-sm
+           font-medium text-white transition-all duration-150 ease-out
+           hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50
+           focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-full border border-ink-200 bg-white/70
-           px-5 py-2 text-sm font-medium text-ink-800 backdrop-blur transition hover:bg-white;
+    @apply inline-flex items-center justify-center rounded-lg border border-ink-200 bg-white
+           px-5 py-2 text-sm font-medium text-ink-800 transition-all duration-150 ease-out
+           hover:border-ink-400 active:scale-[0.98]
+           focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2;
+  }
+  .chip {
+    @apply rounded-full border border-ink-200 bg-white px-3 py-1 text-xs text-ink-600
+           transition-colors duration-150 hover:border-sage hover:text-ink-800
+           disabled:opacity-50;
   }
 }
 
+/* Paper-grey wash with a faint sage bloom, per the comp. */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(60% 50% at 15% 0%, rgba(0, 113, 227, 0.08), transparent 60%),
-    radial-gradient(50% 40% at 90% 10%, rgba(132, 0, 255, 0.06), transparent 60%);
+    radial-gradient(70% 55% at 20% 0%, rgba(111, 145, 135, 0.1), transparent 62%),
+    radial-gradient(55% 45% at 88% 8%, rgba(179, 154, 99, 0.08), transparent 60%);
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
