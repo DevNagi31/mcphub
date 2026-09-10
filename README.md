@@ -48,7 +48,7 @@ Current tools:
 |---|---|
 | App framework | Next.js 15 App Router (Node runtime API routes) |
 | LLM | **Anthropic Claude Sonnet 4.6** via the official `@anthropic-ai/sdk` |
-| MCP toolkit | `@modelcontextprotocol/sdk` shape; tools defined via zod schemas |
+| Tool layer | MCP-style tool registry (no SDK dependency); tools defined via zod schemas |
 | Validation | Zod + a minimal zod→JSON-schema bridge for Claude tool definitions |
 | Streaming | Server-Sent Events for real-time trace delivery |
 | Frontend | React 18 + Tailwind v3 + Framer Motion |
